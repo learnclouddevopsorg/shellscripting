@@ -1,42 +1,98 @@
 #!/bin/bash
 
-# GitHub API URL
+####
+# The script to connect github repository and list the user who have access to that repository.
+# Input required: username and token.
+# Author: Bharanikumaar
+# Version: V1
+#
+# Have to pass REPO_OWNER and REPO_NAME as arguments while running the script.
+# If the jq (JSON Parser) not found error popped, have to install using "sudo apt install jq -y" 
+#
+####
+
+set -exo pipefail
+
+# To list pull requests via bash scripting.    
+#<BLOCK/CAPITAL LETTER WORDS ARE SUBJECTED TO CHANGE BASED ON OWNER & REPO. > 
+# Here, YOUR-TOKEN, OWNER, REPO are subject to change as per requirement.
+
+#####
+#  curl -L \
+#  -H "Accept: application/vnd.github+json" \
+# -H "Authorization: Bearer <YOUR-TOKEN>" \
+#  -H "X-GitHub-Api-Version: 2022-11-28" \
+#  https://api.github.com/repos/OWNER/REPO/pulls
+#####
+
+helper()
+
+#To define github API-url
+
 API_URL="https://api.github.com"
 
-# GitHub username and personal access token
-USERNAME=$username
-TOKEN=$token
+#Github username and personal access token. We need this to autenticate github api.
+#we can get these from users by using read command. But these are sensitive data. so we are going to export the username and token.
+# export username="username of the owner/admin or the user who have access"
+# export token="token" (you can get this token from github console -->your organisation settings -> developer settings ->tokens classic ->generate new classic token -> grant access)
+#paste the generated token in "token"
 
-# User and Repository information
+USERNAME=$username
+TOKEN=$token 
+
+# USER/OWNER AND REPOSITORY INFO. While running we have to pass this info as arguments.
+# eg: ./<script.sh> REPO_OWNER REPO_NAME
+
 REPO_OWNER=$1
 REPO_NAME=$2
 
-# Function to make a GET request to the GitHub API
-function github_api_get {
-    local endpoint="$1"
-    local url="${API_URL}/${endpoint}"
+# Function to make a GET request to Github API
 
-    # Send a GET request to the GitHub API with authentication
-    curl -s -u "${USERNAME}:${TOKEN}" "$url"
+function github_api_get 
+{
+       local endpoint=$1
+       local url="${API_URL}/${endpoint}"	
+
+# send a get request to github API with Authentication
+
+       curl -s -u "${USERNAME}:${TOKEN}" "$url"
+
+#   -u --> u- user : indiactes user authentication <user:password/token;options>
+#   -s -->  s- silent : indicates or to tell the terminal to run the operation silently.
+
 }
 
-# Function to list users with read access to the repository
-function list_users_with_read_access {
-    local endpoint="repos/${REPO_OWNER}/${REPO_NAME}/collaborators"
+# Function to list users with read access.
 
-    # Fetch the list of collaborators on the repository
-    collaborators="$(github_api_get "$endpoint" | jq -r '.[] | select(.permissions.pull == true) | .login')"
+function list_users 
 
-    # Display the list of collaborators with read access
-    if [[ -z "$collaborators" ]]; then
-        echo "No users with read access found for ${REPO_OWNER}/${REPO_NAME}."
-    else
-        echo "Users with read access to ${REPO_OWNER}/${REPO_NAME}:"
-        echo "$collaborators"
-    fi
+{
+       local endpoint="repos/${REPO_OWNER}/${REPO_NAME}/collaborators"
+
+# Fetch the list of collaborators on the repository, in the below code we are calling the "github_api_get" function.
+# In Jq if you want to get that field you have to put dot before. 
+# like (.permission.pull which means inside permission, check pull is true or not) if that condition is true get the data in login field (.login) 
+
+      collaborators="(github_api_get "$endpoint" | jq -r '.[] | select(.permission.pull == true) | .login') 
+
+# Display list of collaborators with read access.
+
+# -z to check whether the string empty. 
+
+if [[ -z "$collaborators" ]]; then 
+     echo "No users with read access for ${REPO_OWNER}/${REPO_NAME}"
+else
+     echo " users with read access for ${REPO_OWNER}/${REPO_NAME}:" 
+     echo "$collaborators"
+fi
 }
 
-# Main script
+# To say to user to pass the arguments as required if the didn't pass.
+function helper {
 
-echo "Listing users with read access to ${REPO_OWNER}/${REPO_NAME}..."
-list_users_with_read_access
+expected_cmd_args=2
+
+if [$# -ne $expected_cmd_args]; then
+echo "Required arguments is $expected_cmd_args"
+echo "Please pass the arguments while running the script"
+}
